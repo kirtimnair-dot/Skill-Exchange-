@@ -1,0 +1,41 @@
+type User @table {
+  uid: String!
+  displayName: String!
+  createdAt: Timestamp!
+  email: String
+  photoUrl: String
+}
+
+type Project @table {
+  projectId: String!
+  name: String!
+  createdAt: Timestamp!
+  region: String
+  description: String
+}
+
+type Site @table {
+  siteId: String!
+  name: String!
+  createdAt: Timestamp!
+  customDomain: String
+  project: Project
+}
+
+type Version @table {
+  versionId: String!
+  deployTimestamp: Timestamp!
+  status: String!
+  rollbackOfVersionId: String
+  commitHash: String
+  site: Site
+  deployingUser: User
+}
+
+type File @table {
+  filePath: String!
+  hash: String!
+  size: Int!
+  mimeType: String
+  version: Version
+}

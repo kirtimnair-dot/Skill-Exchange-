@@ -1,0 +1,25 @@
+mutation CreateProject($name: String!, $projectId: String!) @auth(level: USER) {
+  project_insert(data: { name: $name, projectId: $projectId, createdAt_expr: "request.time" })
+}
+
+query ListProjects @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  projects {
+    id
+    name
+    projectId
+    description
+  }
+}
+
+mutation UpdateSite($id: UUID!, $customDomain: String) @auth(level: USER) {
+  site_update(key: { id: $id }, data: { customDomain: $customDomain })
+}
+
+query GetSite($id: UUID!) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  site(id: $id) {
+    id
+    name
+    siteId
+    customDomain
+  }
+}

@@ -1,0 +1,82 @@
+mutation CreateSeedData @transaction @auth(level: NO_ACCESS) {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-04-26T12:00:00Z",
+      displayName: "Demo User 1",
+      uid: "demo_user_1"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      createdAt: "2024-04-26T13:00:00Z",
+      displayName: "Demo User 2",
+      uid: "demo_user_2"
+    }
+  ])
+  project_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-04-26T14:00:00Z",
+      name: "Demo Project 1",
+      projectId: "demo-project-1",
+      region: "us-central1"
+    },
+    {
+      id: "650e8400-e29b-41d4-a716-446655440001",
+      createdAt: "2024-04-26T15:00:00Z",
+      name: "Demo Project 2",
+      projectId: "demo-project-2",
+      region: "us-east1"
+    }
+  ])
+  site_insertMany(data: [
+    {
+      projectId: "650e8400-e29b-41d4-a716-446655440000",
+      id: "750e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-04-26T16:00:00Z",
+      name: "Demo Site 1",
+      siteId: "demo-site-1"
+    },
+    {
+      projectId: "650e8400-e29b-41d4-a716-446655440001",
+       id: "750e8400-e29b-41d4-a716-446655440001",
+      createdAt: "2024-04-26T17:00:00Z",
+      name: "Demo Site 2",
+      siteId: "demo-site-2"
+    }
+  ])
+  version_insertMany(data: [
+    {
+      deployingUserId: "550e8400-e29b-41d4-a716-446655440000",
+      siteId: "750e8400-e29b-41d4-a716-446655440000",
+      id: "850e8400-e29b-41d4-a716-446655440000",
+      deployTimestamp: "2024-04-26T18:00:00Z",
+      status: "ACTIVE",
+      versionId: "demo-version-1"
+    },
+    {
+      deployingUserId: "550e8400-e29b-41d4-a716-446655440001",
+      siteId: "750e8400-e29b-41d4-a716-446655440001",
+      id: "850e8400-e29b-41d4-a716-446655440001",
+      deployTimestamp: "2024-04-26T19:00:00Z",
+      status: "INACTIVE",
+      versionId: "demo-version-2"
+    }
+  ])
+  file_insertMany(data: [
+    {
+      versionId: "850e8400-e29b-41d4-a716-446655440000",
+      id: "950e8400-e29b-41d4-a716-446655440000",
+      filePath: "/path/to/file1",
+      hash: "hash1",
+      size: 1024
+    },
+    {
+      versionId: "850e8400-e29b-41d4-a716-446655440001",
+      id: "950e8400-e29b-41d4-a716-446655440001",
+      filePath: "/path/to/file2",
+      hash: "hash2",
+      size: 2048
+    }
+  ])
+}
