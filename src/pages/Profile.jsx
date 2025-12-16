@@ -440,34 +440,30 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Right Column - Quick Actions */}
+              {/* Right Column - Profile Picture Upload & Stats */}
               <div className="space-y-6">
+                {/* Profile Picture Upload Card */}
                 <div className="bg-gradient-to-br from-cyan-50 to-blue-50 border border-cyan-100 rounded-2xl p-6">
-                  <h3 className="font-bold text-cyan-800 mb-4 text-lg">Quick Actions</h3>
-                  <div className="space-y-3">
-                    <button 
-                      onClick={() => window.location.href = '/skills?action=add'}
-                      className="w-full bg-white hover:bg-cyan-50 border border-cyan-200 rounded-xl p-4 text-cyan-700 font-semibold flex items-center justify-between group transition-all hover:shadow-md"
-                    >
-                      Add a Skill to Teach
-                      <BookOpen className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    
-                    <button 
-                      onClick={() => window.location.href = '/skills?action=request'}
-                      className="w-full bg-white hover:bg-blue-50 border border-blue-200 rounded-xl p-4 text-blue-700 font-semibold flex items-center justify-between group transition-all hover:shadow-md"
-                    >
-                      Request a Skill to Learn
-                      <MessageSquare className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                    
-                    <button 
-                      onClick={() => window.location.href = '/profile?tab=bookings'}
-                      className="w-full bg-white hover:bg-cyan-50 border border-cyan-200 rounded-xl p-4 text-cyan-700 font-semibold flex items-center justify-between group transition-all hover:shadow-md"
-                    >
-                      View Your Bookings
-                      <Calendar className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
+                  <h3 className="font-bold text-cyan-800 mb-4 text-lg">Update Profile Picture</h3>
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <div className="relative inline-block">
+                        <img
+                          src={profileImage}
+                          alt="Profile"
+                          className="w-24 h-24 rounded-full border-4 border-white shadow-lg mx-auto"
+                        />
+                        <button
+                          onClick={triggerFileInput}
+                          className="absolute bottom-0 right-0 bg-cyan-600 hover:bg-cyan-700 text-white p-2 rounded-full shadow-md transition-all hover:scale-110"
+                        >
+                          <Camera className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-3">
+                        Click the camera icon to upload a new photo
+                      </p>
+                    </div>
                     
                     <button 
                       onClick={triggerFileInput}
@@ -476,6 +472,10 @@ export default function Profile() {
                       <Upload className="w-4 h-4" />
                       Upload Profile Picture
                     </button>
+                    
+                    <div className="text-xs text-gray-500 text-center">
+                      Max file size: 5MB. Supported formats: JPG, PNG, GIF
+                    </div>
                   </div>
                 </div>
 
