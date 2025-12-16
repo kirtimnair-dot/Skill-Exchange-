@@ -1,8 +1,30 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // 🎓 Skills - Allow all authenticated operations
+    match /skills/{skillId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // 📦 Bookings - Allow all authenticated operations
+    match /bookings/{bookingId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // 👤 Users - Basic user rules
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 🔐 Conversations - Basic rules
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null;
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
     }
   }
 }

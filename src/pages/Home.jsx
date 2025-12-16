@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Users, BookOpen, Calendar, Star, TrendingUp } from 'lucide-react';
+import { ArrowRight, Users, BookOpen, Star, TrendingUp, Shield, Clock, Heart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function Home() {
@@ -16,13 +16,6 @@ export default function Home() {
     { name: 'Yoga & Meditation', icon: '🧘', category: 'Wellness' },
     { name: 'Cooking Basics', icon: '👨‍🍳', category: 'Culinary' },
     { name: 'Photography', icon: '📷', category: 'Arts' },
-  ];
-
-  const stats = [
-    { value: '1,000+', label: 'Active Learners', icon: <Users className="w-6 h-6" /> },
-    { value: '500+', label: 'Skills Offered', icon: <BookOpen className="w-6 h-6" /> },
-    { value: '95%', label: 'Success Rate', icon: <Star className="w-6 h-6" /> },
-    { value: '24/7', label: 'Support', icon: <TrendingUp className="w-6 h-6" /> },
   ];
 
   return (
@@ -74,80 +67,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-gradient-to-b from-cyan-50 to-white">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div 
-                key={index}
-                className={`text-center p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border border-cyan-100 ${mounted ? 'opacity-100' : 'opacity-0'}`}
-                style={{ transitionDelay: `${600 + index * 100}ms` }}
-              >
-                <div className="inline-flex items-center justify-center w-14 h-14 bg-cyan-100 text-cyan-600 rounded-full mb-4">
-                  {stat.icon}
-                </div>
-                <div className="text-3xl font-bold text-gray-800 mb-2">{stat.value}</div>
-                <div className="text-gray-600">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-4 text-cyan-800">How It Works</h2>
-          <p className="text-gray-600 text-center text-lg mb-12 max-w-2xl mx-auto">
-            Start your learning journey in just three simple steps
-          </p>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                number: '01',
-                title: 'Create Your Profile',
-                description: 'Sign up and tell us about your skills and interests',
-                icon: '👤',
-                color: 'from-cyan-400 to-blue-400'
-              },
-              {
-                number: '02',
-                title: 'Discover & Connect',
-                description: 'Browse skills or list what you can teach others',
-                icon: '🔍',
-                color: 'from-teal-400 to-cyan-400'
-              },
-              {
-                number: '03',
-                title: 'Learn & Grow',
-                description: 'Schedule sessions and expand your knowledge',
-                icon: '🚀',
-                color: 'from-blue-400 to-indigo-400'
-              }
-            ].map((feature, index) => (
-              <div 
-                key={index}
-                className={`relative group ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
-                style={{ transitionDelay: `${800 + index * 200}ms` }}
-              >
-                <div className={`absolute -inset-0.5 bg-gradient-to-r ${feature.color} opacity-0 group-hover:opacity-100 blur transition duration-500 rounded-3xl`}></div>
-                <div className="relative bg-white p-8 rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2 border border-cyan-50">
-                  <div className={`text-6xl mb-6 transform group-hover:scale-110 transition-transform duration-300`}>
-                    {feature.icon}
-                  </div>
-                  <div className="text-sm font-semibold text-cyan-600 mb-2">{feature.number}</div>
-                  <h3 className="text-2xl font-bold mb-3 text-cyan-800">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
-                  <div className={`mt-6 h-1 w-16 bg-gradient-to-r ${feature.color} rounded-full transform group-hover:w-full transition-all duration-500`}></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Popular Skills Section */}
       <section className="py-20 px-6 bg-gradient-to-b from-cyan-50 to-white">
         <div className="max-w-6xl mx-auto">
@@ -167,7 +86,7 @@ export default function Home() {
               <div 
                 key={index}
                 className={`bg-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-cyan-100 group cursor-pointer ${mounted ? 'opacity-100' : 'opacity-0'}`}
-                style={{ transitionDelay: `${1000 + index * 100}ms` }}
+                style={{ transitionDelay: `${600 + index * 100}ms` }}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="text-4xl">{skill.icon}</div>
@@ -181,7 +100,7 @@ export default function Home() {
                   <Star className="w-4 h-4 text-amber-400 fill-current mr-1" />
                   <span className="font-semibold">4.8</span>
                   <span className="mx-2">•</span>
-                  <Calendar className="w-4 h-4 mr-1" />
+                  <Clock className="w-4 h-4 mr-1" />
                   <span>Flexible scheduling</span>
                 </div>
               </div>

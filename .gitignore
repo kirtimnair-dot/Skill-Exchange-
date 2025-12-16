@@ -1,0 +1,83 @@
+# ===============================
+# Dependencies
+# ===============================
+node_modules/
+.pnpm-store/
+
+# ===============================
+# Build output (Vite)
+# ===============================
+dist/
+dist-ssr/
+.vite/
+*.local-build
+
+# ===============================
+# Environment variables (CRITICAL)
+# ===============================
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.npmrc
+
+# ===============================
+# Debug files
+# ===============================
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# ===============================
+# Firebase
+# ===============================
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+*.firebaserc
+
+# ===============================
+# Coverage
+# ===============================
+coverage/
+.nyc_output/
+
+# ===============================
+# IDE / Editor
+# ===============================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ===============================
+# OS generated files
+# ===============================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===============================
+# Package manager specific
+# ===============================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+shrinkwrap.yaml
+
+# ===============================
+# Temporary files
+# ===============================
+tmp/
+temp/

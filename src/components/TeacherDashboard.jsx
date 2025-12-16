@@ -1,3 +1,4 @@
+// src/components/TeacherDashboard.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -18,7 +19,7 @@ import { format, parseISO, isPast, isFuture } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { startChat } from '../services/chatService';
 
-export default function Booking() {
+export default function TeacherDashboard() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [bookings, setBookings] = useState([]);

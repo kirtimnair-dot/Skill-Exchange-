@@ -1,6 +1,7 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { auth } from '../firebase/firebase';
-import { 
+import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -10,164 +11,121 @@ import {
 import { userService } from '../firebase/firestoreService';
 
 const AuthContext = createContext();
+export { AuthContext };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Sign up with email/password
+  // ---------------- SIGN UP ----------------
   const signup = async (email, password, userData) => {
     try {
-      // Create auth user
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      setError(null);
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
       const user = userCredential.user;
 
-      // Update profile with display name
-      if (userData.name) {
+      if (userData?.name) {
         await updateProfile(user, { displayName: userData.name });
       }
 
-      // Prepare Firestore data with timestamp
-      const firestoreData = {
+      await userService.createOrUpdateUser(user.uid, {
         ...userData,
-        email: user.email,
         uid: user.uid,
+        email: user.email,
         createdAt: new Date(),
         updatedAt: new Date()
-      };
+      });
 
-      // Save to Firestore
-      const saveResult = await userService.createOrUpdateUser(user.uid, firestoreData);
-      
-      if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Failed to save user data');
-      }
-
-      return { success: true, user, userId: user.uid };
-    } catch (error) {
-      console.error("Signup error:", error);
-      return { success: false, error: error.message };
+      return { success: true, user };
+    } catch (err) {
+      setError(err.message);
+      return { success: false, error: err.message };
     }
   };
 
-  // Login with email/password
+  // ---------------- LOGIN ----------------
   const login = async (email, password) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Store token in localStorage
-      const token = await user.getIdToken();
-      localStorage.setItem('authToken', token);
-      
-      // Load user data from Firestore
-      const userResult = await userService.getUser(user.uid);
-      if (userResult.success) {
-        setCurrentUser({ ...user, ...userResult.user });
-      } else {
-        setCurrentUser(user);
-      }
-      
-      return { success: true, user };
-    } catch (error) {
-      console.error("Login error:", error);
-      return { success: false, error: error.message };
+      setError(null);
+
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      return { success: true, user: userCredential.user };
+    } catch (err) {
+      setError(err.message);
+      return { success: false, error: err.message };
     }
   };
 
-  // Logout
+  // ---------------- LOGOUT ----------------
   const logout = async () => {
     try {
+      setError(null);
       await signOut(auth);
-      localStorage.removeItem('authToken');
-      sessionStorage.removeItem('authToken');
       setCurrentUser(null);
       return { success: true };
-    } catch (error) {
-      console.error("Logout error:", error);
-      return { success: false, error: error.message };
+    } catch (err) {
+      setError(err.message);
+      return { success: false, error: err.message };
     }
   };
 
-  // Update user profile
+  // ---------------- UPDATE PROFILE ----------------
   const updateUserProfile = async (updates) => {
     try {
-      // Check if currentUser exists
-      if (!currentUser) {
-        throw new Error("No user logged in");
+      if (!auth.currentUser) {
+        throw new Error('No authenticated user');
       }
-      
-      const userId = currentUser.uid;
-      const authUser = auth.currentUser;
-      
-      if (!authUser) {
-        throw new Error("No authenticated user found");
-      }
-      
-      // Update in Firebase Auth (if name is being updated)
-      if (updates.name && updates.name !== authUser.displayName) {
-        await updateProfile(authUser, { 
-          displayName: updates.name 
+
+      if (updates.name) {
+        await updateProfile(auth.currentUser, {
+          displayName: updates.name
         });
       }
 
-      // Update in Firestore with timestamp
-      const updatesWithTimestamp = {
+      await userService.updateUser(auth.currentUser.uid, {
         ...updates,
         updatedAt: new Date()
-      };
+      });
 
-      const result = await userService.updateUser(userId, updatesWithTimestamp);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to update profile');
-      }
-
-      // Update local state
       setCurrentUser(prev => ({
         ...prev,
         ...updates,
-        displayName: updates.name || (prev ? prev.displayName : '')
+        displayName: updates.name || prev.displayName
       }));
 
-      return { success: true, message: 'Profile updated successfully' };
-    } catch (error) {
-      console.error("Update profile error:", error);
-      return { 
-        success: false, 
-        error: error.message || 'Failed to update profile'
-      };
+      return { success: true };
+    } catch (err) {
+      setError(err.message);
+      return { success: false, error: err.message };
     }
   };
 
-  // Load user data from Firestore
-  const loadUserData = async (user) => {
-    try {
-      const userResult = await userService.getUser(user.uid);
-      if (userResult.success && userResult.user) {
-        return { ...user, ...userResult.user };
-      }
-      return user;
-    } catch (error) {
-      console.error("Error loading user data:", error);
-      return user;
-    }
-  };
-
+  // ---------------- AUTH STATE LISTENER ----------------
   useEffect(() => {
-    // Listen for auth state changes
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        try {
-          // Get additional user data from Firestore
-          const userWithData = await loadUserData(user);
-          setCurrentUser(userWithData);
-        } catch (error) {
-          console.error("Error setting user data:", error);
-          setCurrentUser(user);
-        }
+        const result = await userService.getUser(user.uid);
+        setCurrentUser(result.success ? { ...user, ...result.user } : user);
       } else {
         setCurrentUser(null);
       }
@@ -183,7 +141,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUserProfile,
-    loading
+    loading,
+    error
   };
 
   return (

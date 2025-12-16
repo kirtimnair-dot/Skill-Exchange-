@@ -1,16 +1,16 @@
+// src/components/StudentBookings.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   Calendar, Clock, MapPin, 
-  CheckCircle, XCircle, Clock as ClockIcon,
-  MessageSquare, Star, User, AlertCircle,
-  Search, Eye, TrendingUp, Bell,
-  ChevronDown, ChevronUp, BookOpen,
-  IndianRupee, DollarSign, Users, Shield
+  CheckCircle, XCircle, MessageSquare,
+  Star, User, Search, Eye,
+  ChevronDown, ChevronUp,
+  IndianRupee, CreditCard, BookOpen
 } from 'lucide-react';
 import { 
   collection, query, where, getDocs, 
-  updateDoc, doc, orderBy, Timestamp,
+  updateDoc, doc, orderBy,
   onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase/firebase';
@@ -18,45 +18,34 @@ import { format, parseISO, isPast, isFuture } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { startChat } from '../services/chatService';
 
-export default function Booking() {
+export default function StudentBookings() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState('pending');
+  const [selectedTab, setSelectedTab] = useState('upcoming');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedBooking, setExpandedBooking] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    confirmed: 0,
-    completed: 0,
-    cancelled: 0,
-    earnings: 0
-  });
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedReviewBooking, setSelectedReviewBooking] = useState(null);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState('');
   
-  // Real-time listener for teacher bookings
   useEffect(() => {
     if (currentUser) {
       fetchBookings();
       setupRealtimeListener();
-      requestNotificationPermission();
     }
   }, [currentUser]);
 
   const fetchBookings = async () => {
     setLoading(true);
     try {
-      // Query for bookings where user is teacher
       const bookingsRef = collection(db, 'bookings');
       const q = query(
         bookingsRef,
-        where('teacherId', '==', currentUser.uid),
+        where('studentId', '==', currentUser.uid),
         orderBy('createdAt', 'desc')
       );
       
@@ -79,15 +68,13 @@ export default function Booking() {
           isPast: isPast(sessionDate),
           isFuture: isFuture(sessionDate),
           status: data.status || 'pending',
-          paymentStatus: data.paymentStatus || 'pending',
-          readStatus: data.readStatus || { teacher: false, student: true }
+          paymentStatus: data.paymentStatus || 'pending'
         };
       });
 
       setBookings(bookingsData);
-      calculateStats(bookingsData);
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error('Error fetching student bookings:', error);
     } finally {
       setLoading(false);
     }
@@ -99,7 +86,7 @@ export default function Booking() {
     const bookingsRef = collection(db, 'bookings');
     const q = query(
       bookingsRef,
-      where('teacherId', '==', currentUser.uid),
+      where('studentId', '==', currentUser.uid),
       orderBy('createdAt', 'desc')
     );
     
@@ -122,146 +109,48 @@ export default function Booking() {
           isPast: isPast(sessionDate),
           isFuture: isFuture(sessionDate),
           status: data.status || 'pending',
-          paymentStatus: data.paymentStatus || 'pending',
-          readStatus: data.readStatus || { teacher: false, student: true }
+          paymentStatus: data.paymentStatus || 'pending'
         };
       });
 
       setBookings(bookingsData);
-      calculateStats(bookingsData);
-      
-      // Check for new unread bookings
-      const newBookings = bookingsData.filter(b => 
-        !b.readStatus?.teacher && b.status === 'pending'
-      );
-      
-      if (newBookings.length > 0) {
-        showNotification(newBookings);
-      }
     });
     
     return unsubscribe;
   };
 
-  const showNotification = (newBookings) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      const latest = newBookings[0];
-      new Notification('🎯 New Booking Request!', {
-        body: `${latest.studentName || 'A student'} booked your "${latest.skillTitle}" session`,
-        icon: '/logo.png',
-        tag: 'booking-notification'
-      });
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) {
+      return;
     }
-  };
-
-  const requestNotificationPermission = () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  };
-
-  const calculateStats = (bookingsData) => {
-    const stats = {
-      total: bookingsData.length,
-      pending: bookingsData.filter(b => b.status === 'pending').length,
-      confirmed: bookingsData.filter(b => b.status === 'confirmed').length,
-      completed: bookingsData.filter(b => b.status === 'completed').length,
-      cancelled: bookingsData.filter(b => b.status === 'cancelled').length,
-      earnings: bookingsData
-        .filter(b => b.status === 'completed')
-        .reduce((sum, b) => sum + (b.price || 0), 0)
-    };
-
-    setStats(stats);
-  };
-
-  const handleBookingAction = async (bookingId, action) => {
+    
     setActionLoading(true);
     try {
       const bookingRef = doc(db, 'bookings', bookingId);
-      const bookingToUpdate = bookings.find(b => b.id === bookingId);
+      await updateDoc(bookingRef, {
+        status: 'cancelled',
+        paymentStatus: 'cancelled',
+        cancellationReason: 'Cancelled by student',
+        updatedAt: new Date()
+      });
       
-      if (!bookingToUpdate) {
-        throw new Error('Booking not found');
-      }
-      
-      const updates = {
-        updatedAt: Timestamp.now(),
-        'readStatus.teacher': true
-      };
-
-      switch (action) {
-        case 'confirm':
-          updates.status = 'confirmed';
-          updates.paymentStatus = 'pending';
-          break;
-          
-        case 'complete':
-          updates.status = 'completed';
-          updates.paymentStatus = 'paid';
-          break;
-          
-        case 'cancel':
-          updates.status = 'cancelled';
-          updates.paymentStatus = 'cancelled';
-          updates.cancellationReason = 'Cancelled by teacher';
-          break;
-          
-        case 'mark-paid':
-          updates.paymentStatus = 'paid';
-          updates.paymentNotes = 'Payment received in cash';
-          break;
-          
-        case 'mark-read':
-          // Just mark as read, no status change
-          break;
-          
-        default:
-          break;
-      }
-
-      await updateDoc(bookingRef, updates);
-      
-      // Show success message
-      const actionMessages = {
-        confirm: 'Booking confirmed!',
-        complete: 'Session marked as completed!',
-        cancel: 'Booking cancelled.',
-        'mark-paid': 'Payment marked as received!',
-        'mark-read': 'Marked as read'
-      };
-      
-      alert(actionMessages[action] || 'Action completed');
-      
-      // Refresh bookings
+      alert('Booking cancelled successfully!');
       fetchBookings();
-      
     } catch (error) {
-      console.error(`Error ${action}ing booking:`, error);
-      alert(`Failed to ${action} booking: ${error.message}`);
+      console.error('Error cancelling booking:', error);
+      alert('Failed to cancel booking');
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleStartChat = async (studentId, studentName, skillTitle = '') => {
-    if (!currentUser) {
-      alert('Please login to start a chat');
-      navigate('/login');
-      return;
-    }
-    
-    if (currentUser.uid === studentId) {
-      alert('You cannot message yourself');
-      return;
-    }
-    
+  const handleStartChat = async (teacherId, teacherName, skillTitle = '') => {
     try {
       const result = await startChat(
         currentUser.uid,
-        currentUser.displayName || 'Teacher',
-        studentId,
-        studentName
+        currentUser.displayName || 'Student',
+        teacherId,
+        teacherName
       );
       
       if (result.success) {
@@ -285,12 +174,12 @@ export default function Booking() {
         review: {
           rating: reviewRating,
           comment: reviewComment.trim(),
-          createdAt: Timestamp.now()
+          createdAt: new Date()
         },
-        updatedAt: Timestamp.now()
+        updatedAt: new Date()
       });
       
-      // Update teacher rating in skills collection
+      // Update teacher's rating
       const skillsQuery = query(
         collection(db, 'skills'),
         where('userId', '==', selectedReviewBooking.teacherId)
@@ -301,7 +190,7 @@ export default function Booking() {
         const skillRef = doc(db, 'skills', skillDoc.id);
         return updateDoc(skillRef, {
           rating: reviewRating,
-          updatedAt: Timestamp.now()
+          updatedAt: new Date()
         });
       });
       
@@ -321,20 +210,19 @@ export default function Booking() {
   };
 
   const filteredBookings = bookings.filter(booking => {
-    if (selectedTab === 'pending') return booking.status === 'pending';
     if (selectedTab === 'upcoming') return booking.status === 'confirmed' && booking.isFuture;
+    if (selectedTab === 'pending') return booking.status === 'pending';
     if (selectedTab === 'completed') return booking.status === 'completed';
     if (selectedTab === 'cancelled') return booking.status === 'cancelled';
     return true;
   }).filter(booking => 
     booking.skillTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    booking.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    booking.teacherName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     booking.notes?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const unreadCount = bookings.filter(b => 
-    !b.readStatus?.teacher && b.status === 'pending'
-  ).length;
+  const upcomingCount = bookings.filter(b => b.status === 'confirmed' && b.isFuture).length;
+  const pendingCount = bookings.filter(b => b.status === 'pending').length;
 
   const formatDate = (dateString) => {
     try {
@@ -348,8 +236,8 @@ export default function Booking() {
   const getStatusBadge = (status) => {
     const styles = {
       pending: { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200' },
-      confirmed: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
-      completed: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
+      confirmed: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-200' },
+      completed: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
       cancelled: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-200' }
     };
     return styles[status] || { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-200' };
@@ -373,40 +261,41 @@ export default function Booking() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-cyan-800 mb-2">Teacher Dashboard</h1>
-              <p className="text-cyan-600">Manage your booking requests and sessions</p>
+              <h1 className="text-3xl font-bold text-cyan-800 mb-2">My Learning Sessions</h1>
+              <p className="text-cyan-600">Manage your booked sessions and track your progress</p>
             </div>
-            
-            {/* Notification Bell */}
-            <div className="flex items-center gap-4">
-              {unreadCount > 0 && (
-                <div className="relative">
-                  <Bell className="w-6 h-6 text-cyan-600" />
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={requestNotificationPermission}
-                className="text-sm text-cyan-600 hover:text-cyan-700"
-              >
-                Enable notifications
-              </button>
-            </div>
+            <a
+              href="/skills"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-shadow"
+            >
+              <BookOpen className="w-5 h-5" />
+              Book New Session
+            </a>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl p-6 shadow-lg border border-cyan-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Bookings</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-2xl font-bold text-gray-900">{bookings.length}</p>
               </div>
               <div className="p-3 rounded-lg bg-cyan-100 text-cyan-600">
                 <Calendar className="w-6 h-6" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-green-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Upcoming</p>
+                <p className="text-2xl font-bold text-gray-900">{upcomingCount}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-green-100 text-green-600">
+                <CheckCircle className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -415,34 +304,10 @@ export default function Booking() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+                <p className="text-2xl font-bold text-gray-900">{pendingCount}</p>
               </div>
               <div className="p-3 rounded-lg bg-amber-100 text-amber-600">
-                <Bell className="w-6 h-6" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-green-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Confirmed</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.confirmed}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-green-100 text-green-600">
-                <CheckCircle className="w-6 h-6" />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-emerald-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Earnings</p>
-                <p className="text-2xl font-bold text-gray-900">₹{stats.earnings}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-emerald-100 text-emerald-600">
-                <DollarSign className="w-6 h-6" />
+                <Clock className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -454,11 +319,11 @@ export default function Booking() {
             {/* Tabs */}
             <div className="flex flex-wrap gap-2">
               {[
-                { key: 'pending', label: 'Pending', icon: Bell },
-                { key: 'upcoming', label: 'Upcoming', icon: Calendar },
+                { key: 'upcoming', label: 'Upcoming', icon: Calendar, count: upcomingCount },
+                { key: 'pending', label: 'Pending', icon: Clock, count: pendingCount },
                 { key: 'completed', label: 'Completed', icon: CheckCircle },
                 { key: 'cancelled', label: 'Cancelled', icon: XCircle },
-                { key: 'all', label: 'All Bookings', icon: BookOpen }
+                { key: 'all', label: 'All Bookings', icon: Eye }
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -471,9 +336,9 @@ export default function Booking() {
                 >
                   <tab.icon className="w-4 h-4" />
                   {tab.label}
-                  {tab.key === 'pending' && unreadCount > 0 && (
-                    <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadCount}
+                  {tab.count > 0 && (
+                    <span className="bg-cyan-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {tab.count}
                     </span>
                   )}
                 </button>
@@ -485,7 +350,7 @@ export default function Booking() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search by skill, student, or notes..."
+                placeholder="Search by skill, teacher, or notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -499,22 +364,34 @@ export default function Booking() {
           {filteredBookings.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-xl shadow-sm">
               <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {selectedTab === 'upcoming' 
+                  ? 'No upcoming sessions' 
+                  : selectedTab === 'pending'
+                  ? 'No pending requests'
+                  : `No ${selectedTab} bookings`}
+              </h3>
               <p className="text-gray-500 mb-6">
-                {selectedTab === 'pending' 
-                  ? "You don't have any pending booking requests." 
+                {selectedTab === 'upcoming' 
+                  ? 'When you book sessions, they will appear here.' 
                   : `You don't have any ${selectedTab} bookings.`}
               </p>
+              <a
+                href="/skills"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-6 py-3 rounded-xl hover:shadow-lg"
+              >
+                <Search className="w-5 h-5" />
+                Browse Skills to Book
+              </a>
             </div>
           ) : (
             filteredBookings.map((booking) => {
               const statusStyle = getStatusBadge(booking.status);
-              const isUnread = !booking.readStatus?.teacher && booking.status === 'pending';
               
               return (
                 <div 
                   key={booking.id}
-                  className={`bg-white rounded-xl shadow-sm border ${isUnread ? 'border-amber-200 bg-amber-50' : 'border-gray-100'} overflow-hidden hover:shadow-md transition-shadow`}
+                  className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
                 >
                   <div className="p-6">
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -523,7 +400,7 @@ export default function Booking() {
                         <div className="flex items-start gap-4">
                           <div className={`p-3 rounded-lg ${statusStyle.bg}`}>
                             {booking.status === 'pending' ? (
-                              <Bell className={`w-6 h-6 ${statusStyle.text}`} />
+                              <Clock className={`w-6 h-6 ${statusStyle.text}`} />
                             ) : booking.status === 'confirmed' ? (
                               <CheckCircle className={`w-6 h-6 ${statusStyle.text}`} />
                             ) : booking.status === 'completed' ? (
@@ -543,7 +420,7 @@ export default function Booking() {
                               
                               <div className="flex items-center gap-1 text-gray-600">
                                 <User className="w-4 h-4" />
-                                <span>{booking.studentName || 'Student'}</span>
+                                <span>Teacher: {booking.teacherName || 'Teacher'}</span>
                               </div>
                               
                               <div className="flex items-center gap-1 text-gray-600">
@@ -578,19 +455,11 @@ export default function Booking() {
                               </div>
                             </div>
                             
-                            {/* Unread Indicator */}
-                            {isUnread && (
-                              <div className="flex items-center gap-2 mt-3 text-amber-600 text-sm">
-                                <Bell className="w-4 h-4" />
-                                <span className="font-medium">New booking request!</span>
-                              </div>
-                            )}
-                            
-                            {/* Student Notes */}
+                            {/* Your Notes */}
                             {booking.notes && (
                               <div className="mt-3">
                                 <p className="text-sm text-gray-600">
-                                  <span className="font-medium">Student notes:</span> {booking.notes}
+                                  <span className="font-medium">Your notes:</span> {booking.notes}
                                 </p>
                               </div>
                             )}
@@ -601,64 +470,54 @@ export default function Booking() {
                       {/* Right Side - Actions */}
                       <div className="flex flex-col gap-2 min-w-[200px]">
                         {booking.status === 'pending' && (
-                          <>
+                          <button
+                            onClick={() => handleCancelBooking(booking.id)}
+                            disabled={actionLoading}
+                            className="w-full bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            Cancel Request
+                          </button>
+                        )}
+                        
+                        {booking.status === 'confirmed' && (
+                          <div className="space-y-2">
+                            <div className="bg-cyan-50 p-3 rounded-lg">
+                              <p className="text-sm text-cyan-700 text-center">
+                                <CreditCard className="w-4 h-4 inline mr-1" />
+                                Pay ₹{booking.price} in cash
+                              </p>
+                            </div>
                             <button
-                              onClick={() => handleBookingAction(booking.id, 'confirm')}
-                              disabled={actionLoading}
-                              className="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleBookingAction(booking.id, 'cancel')}
+                              onClick={() => handleCancelBooking(booking.id)}
                               disabled={actionLoading}
                               className="w-full bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                               <XCircle className="w-4 h-4" />
-                              Decline
+                              Cancel Session
                             </button>
-                          </>
+                          </div>
                         )}
                         
-                        {booking.status === 'confirmed' && booking.paymentStatus === 'pending' && (
+                        {booking.status === 'completed' && !booking.review?.rating && (
                           <button
-                            onClick={() => handleBookingAction(booking.id, 'mark-paid')}
-                            disabled={actionLoading}
-                            className="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                            onClick={() => {
+                              setSelectedReviewBooking(booking);
+                              setShowReviewModal(true);
+                            }}
+                            className="w-full bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition flex items-center justify-center gap-2"
                           >
-                            <IndianRupee className="w-4 h-4" />
-                            Mark as Paid
-                          </button>
-                        )}
-                        
-                        {booking.status === 'confirmed' && booking.isPast && (
-                          <button
-                            onClick={() => handleBookingAction(booking.id, 'complete')}
-                            disabled={actionLoading}
-                            className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                            Mark Complete
-                          </button>
-                        )}
-                        
-                        {isUnread && (
-                          <button
-                            onClick={() => handleBookingAction(booking.id, 'mark-read')}
-                            disabled={actionLoading}
-                            className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
-                          >
-                            Mark as read
+                            <Star className="w-4 h-4" />
+                            Leave Review
                           </button>
                         )}
                         
                         <button
-                          onClick={() => handleStartChat(booking.studentId, booking.studentName, booking.skillTitle)}
+                          onClick={() => handleStartChat(booking.teacherId, booking.teacherName, booking.skillTitle)}
                           className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-lg hover:shadow-md transition flex items-center justify-center gap-2"
                         >
                           <MessageSquare className="w-4 h-4" />
-                          Message Student
+                          Message Teacher
                         </button>
                         
                         <button
@@ -701,22 +560,22 @@ export default function Booking() {
                           </div>
                           
                           <div>
-                            <h4 className="font-bold text-gray-900 mb-3">Student Information</h4>
+                            <h4 className="font-bold text-gray-900 mb-3">Teacher Information</h4>
                             <div className="space-y-3">
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Name:</span>
-                                <span className="font-medium">{booking.studentName}</span>
+                                <span className="font-medium">{booking.teacherName}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-gray-600">Email:</span>
-                                <span className="font-medium">{booking.studentEmail}</span>
+                                <span className="font-medium">{booking.teacherEmail}</span>
                               </div>
                             </div>
                             
-                            {/* Review Section */}
-                            {booking.status === 'completed' && booking.review?.rating > 0 && (
+                            {/* Your Review */}
+                            {booking.review?.rating > 0 && (
                               <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                                <h5 className="font-medium text-gray-900 mb-2">Student Review</h5>
+                                <h5 className="font-medium text-gray-900 mb-2">Your Review</h5>
                                 <div className="flex items-center gap-1 mb-1">
                                   {[...Array(5)].map((_, i) => (
                                     <Star 
@@ -732,6 +591,14 @@ export default function Booking() {
                             )}
                           </div>
                         </div>
+                        
+                        {/* Payment Instructions */}
+                        <div className="mt-6 bg-cyan-50 p-4 rounded-lg">
+                          <h5 className="font-bold text-cyan-800 mb-2">Payment Instructions</h5>
+                          <p className="text-sm text-cyan-700">
+                            💵 <span className="font-medium">Cash Payment:</span> Please pay ₹{booking.price} directly to {booking.teacherName} at the beginning of your session.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -746,11 +613,11 @@ export default function Booking() {
       {showReviewModal && selectedReviewBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Submit Review</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Leave a Review</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Rating for {selectedReviewBooking.studentName}
+                  How was your session with {selectedReviewBooking.teacherName}?
                 </label>
                 <div className="flex gap-2 mb-4">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -773,14 +640,14 @@ export default function Booking() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Comments (Optional)
+                  Your Review (Optional)
                 </label>
                 <textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  rows="3"
-                  placeholder="Share your feedback about the session..."
+                  rows="4"
+                  placeholder="Share your experience with this teacher..."
                 />
               </div>
               <div className="flex gap-3 pt-4">

@@ -3,7 +3,16 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: true,
+    allowedHosts: [
+      'superbly-toothless-telma.ngrok-free.dev'
+    ],
+  },
   build: {
-    chunkSizeWarningLimit: 1000, // Increase from 500kb to 1000kb
-  }
+    chunkSizeWarningLimit: 1000,
+  },
 })
+  

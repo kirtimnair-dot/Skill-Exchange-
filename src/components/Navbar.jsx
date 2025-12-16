@@ -1,12 +1,39 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Search, MessageCircle, User, LogOut, Menu, X, Calendar } from 'lucide-react';
-import { useState } from 'react';
+import { Home, Search, MessageCircle, User, LogOut, Menu, X, Calendar, Bell, BookOpen } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser) {
+      // Set up real-time listener for teacher notifications
+      const bookingsRef = collection(db, 'bookings');
+      const q = query(
+        bookingsRef,
+        where('teacherId', '==', currentUser.uid),
+        where('status', '==', 'pending')
+      );
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        // Count unread bookings
+        const unreadCount = snapshot.docs.filter(doc => {
+          const data = doc.data();
+          return !data.readStatus?.teacher;
+        }).length;
+        
+        setNotificationCount(unreadCount);
+      });
+      
+      return unsubscribe;
+    }
+  }, [currentUser]);
 
   const handleLogout = async () => {
     try {
@@ -44,9 +71,18 @@ export default function Navbar() {
             
             {currentUser ? (
               <>
-                <Link to="/bookings" className="flex items-center text-cyan-700 hover:text-cyan-600 transition">
+                <Link to="/add-skill" className="flex items-center text-cyan-700 hover:text-cyan-600 transition">
+                  <BookOpen className="w-5 h-5 mr-1" />
+                  Teach a Skill
+                </Link>
+                <Link to="/bookings" className="flex items-center text-cyan-700 hover:text-cyan-600 transition relative">
                   <Calendar className="w-5 h-5 mr-1" />
                   My Bookings
+                  {notificationCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {notificationCount}
+                    </span>
+                  )}
                 </Link>
                 <Link to="/chat" className="flex items-center text-cyan-700 hover:text-cyan-600 transition">
                   <MessageCircle className="w-5 h-5 mr-1" />
@@ -106,9 +142,18 @@ export default function Navbar() {
             
             {currentUser ? (
               <>
-                <Link to="/bookings" className="block px-3 py-2 rounded-md text-cyan-700 hover:bg-cyan-50" onClick={() => setIsMenuOpen(false)}>
+                <Link to="/add-skill" className="block px-3 py-2 rounded-md text-cyan-700 hover:bg-cyan-50" onClick={() => setIsMenuOpen(false)}>
+                  <BookOpen className="w-4 h-4 inline mr-2" />
+                  Teach a Skill
+                </Link>
+                <Link to="/bookings" className="block px-3 py-2 rounded-md text-cyan-700 hover:bg-cyan-50 relative" onClick={() => setIsMenuOpen(false)}>
                   <Calendar className="w-4 h-4 inline mr-2" />
                   My Bookings
+                  {notificationCount > 0 && (
+                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {notificationCount}
+                    </span>
+                  )}
                 </Link>
                 <Link to="/chat" className="block px-3 py-2 rounded-md text-cyan-700 hover:bg-cyan-50" onClick={() => setIsMenuOpen(false)}>
                   <MessageCircle className="w-4 h-4 inline mr-2" />
