@@ -71,7 +71,7 @@ export default function Footer() {
 
         <div className="border-t border-cyan-800 mt-10 pt-6 text-center text-cyan-400">
           <p>&copy; {new Date().getFullYear()} SkillExchange. All rights reserved.</p>
-          <p className="text-sm mt-2">Building communities through knowledge sharing</p>
+          <p className="text-sm mt-2">Building communities through knowledge sharing.</p>
         </div>
       </div>
     </footer>

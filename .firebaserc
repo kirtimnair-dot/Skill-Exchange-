@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "skillexchange-4e14e"
-  }
+    "default": "skillexchange-4e14e",
+    "staging": "skillexchange-4e14e"
+  },
+  "targets": {},
+  "etags": {}
 }
